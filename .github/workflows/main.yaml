@@ -31,10 +31,24 @@ jobs:
           LINE_CHANNEL_TOKEN: ${{ secrets.LINE_CHANNEL_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
         run: |
-          # 取得 UTC 對應台灣時間
-          TZ="Asia/Taipei" date +"%H:%M" | grep -q -E '14:(20|30|40|50)|08:00'
-          if [ $? -eq 0 ]; then
-            python pay_notify.py
+        # 取得台灣時間
+          HOUR=$(TZ="Asia/Taipei" date +"%H")
+          MINUTE=$(TZ="Asia/Taipei" date +"%M")
+
+          # 台灣時間 14:00 ~ 16:00，每 10 分鐘檢查一次
+          if [ "$HOUR" -ge 14 ] && [ "$HOUR" -lt 16 ]; then
+              if [ $((10#$MINUTE % 10)) -eq 0 ]; then
+                  python pay_notify.py
+              else
+                  echo "不在整10分鐘，跳過執行"
+              fi
           else
-            echo "不在 7:20~8:00 時間段，跳過執行"
+              echo "不在 14:00~16:00 時間段，跳過執行"
           fi
+           # 取得 UTC 對應台灣時間
+          # TZ="Asia/Taipei" date +"%H:%M" | grep -q -E '14:(20|30|40|50)|08:00'
+          # if [ $? -eq 0 ]; then
+          #   python pay_notify.py
+          # else
+          #   echo "不在 7:20~8:00 時間段，跳過執行"
+          # fi
