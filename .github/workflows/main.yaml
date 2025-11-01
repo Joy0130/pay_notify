@@ -32,7 +32,7 @@ jobs:
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
         run: |
           # 取得 UTC 對應台灣時間
-          TZ="Asia/Taipei" date +"%H:%M" | grep -q -E '07:(20|30|40|50)|08:00'
+          TZ="Asia/Taipei" date +"%H:%M" | grep -q -E '14:(20|30|40|50)|08:00'
           if [ $? -eq 0 ]; then
             python pay_notify.py
           else
