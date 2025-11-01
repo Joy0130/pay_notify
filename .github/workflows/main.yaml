@@ -1,6 +1,8 @@
 name: Gmail LINE Notify
 
 on:
+ push:
+  branches: [ main ]
   schedule:
     # 在奇數月份的1-12號，UTC時間 7:15-7:30 (台灣時間 15:15-15:30)，每分鐘執行一次
     - cron: "15-30 7 1-12 1,3,5,7,9,11 *"
