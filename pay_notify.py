@@ -39,14 +39,15 @@ def send_line(msg):
         logging.error(f"LINE 發送請求錯誤: {e}")
 
 def process_new_mail(client):
-    """處理新郵件"""
+    """處理新郵件，如果找到並發送了通知，則返回 True"""
     logging.info("正在檢查新郵件...")
     # 搜尋未讀且來自特定寄件人的郵件
     messages = client.search(['UNSEEN', 'FROM', TARGET_SENDER])
     if not messages:
         logging.info("沒有找到符合條件的新郵件。")
-        return
+        return False
 
+    notification_sent = False
     logging.info(f"找到 {len(messages)} 封新郵件，正在處理...")
     for msgid in messages:
         try:
@@ -62,39 +63,35 @@ def process_new_mail(client):
             if TARGET_SUBJECT_KEYWORD in subject:
                 logging.info(f"找到電費通知郵件: {subject}")
                 send_line(f"收到電費通知: {subject}")
+                notification_sent = True
 
             # 將郵件標示為已讀
             client.add_flags(msgid, [b'\\Seen'])
         except Exception as e:
             logging.error(f"處理郵件 {msgid} 時發生錯誤: {e}")
+    
+    return notification_sent
 
 def main():
-    """主函式，使用 IDLE 模式監控信箱"""
-    while True:
-        try:
-            with IMAPClient(IMAP_HOST) as client:
-                logging.info(f"登入 Gmail: {EMAIL_ACCOUNT}")
-                client.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
-                client.select_folder('INBOX')
-                logging.info("登入成功，開始監控...")
-                
-                # 首次執行先檢查一次
-                process_new_mail(client)
+    """主函式：連線到 Gmail，處理一次郵件，然後根據結果結束程式。"""
+    notification_sent = False
+    try:
+        with IMAPClient(IMAP_HOST) as client:
+            logging.info(f"登入 Gmail: {EMAIL_ACCOUNT}")
+            client.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
+            client.select_folder('INBOX')
+            logging.info("登入成功，開始檢查郵件...")
+            
+            notification_sent = process_new_mail(client)
 
-                # 進入 IDLE 模式，等待伺服器通知
-                while True:
-                    logging.info("進入 IDLE 模式，等待新郵件...")
-                    client.idle()
-                    responses = client.idle_check(timeout=600) # 每 10 分鐘檢查一次連線
-                    client.idle_done()
-                    if responses:
-                        logging.info("伺服器回報有新活動，重新檢查郵件。")
-                        process_new_mail(client)
+    except (IMAPClientError, OSError) as e:
+        logging.error(f"IMAP 連線或處理時發生錯誤: {e}")
 
-        except (IMAPClientError, OSError) as e:
-            logging.error(f"IMAP 連線錯誤: {e}")
-            logging.info("將在 60 秒後嘗試重新連線...")
-            time.sleep(60)
+    if not notification_sent:
+        logging.info("未發送任何通知，等待 3 秒後結束...")
+        time.sleep(3)
+    
+    logging.info("任務完成，程式結束。")
 
 if __name__ == "__main__":
     main()
