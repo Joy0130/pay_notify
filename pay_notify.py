@@ -18,7 +18,7 @@ LINE_TOKEN = os.getenv('LINE_CHANNEL_TOKEN')
 USER_ID = os.getenv('LINE_USER_ID')
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
-TARGET_SENDER = 'gm10290014@gmail.com'
+TARGET_SENDER = 'ebill@ebppsmtp.taipower.com.tw'
 TARGET_SUBJECT_KEYWORD = '電費通知'
 
 def send_line(msg):
@@ -71,7 +71,7 @@ def process_new_mail(client):
                 # 組成 Gmail 網址
                 mail_url = f"https://mail.google.com/mail/u/0/#inbox/{gmail_msg_id_hex}"
                 
-                notification_message = f"收到電費通知:\n{subject}\n\n點此查看信件:\n{mail_url}"
+                notification_message = f"收到電費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
                 send_line(notification_message)
                 notification_sent = True
 
