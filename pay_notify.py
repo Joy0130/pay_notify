@@ -18,8 +18,10 @@ LINE_TOKEN = os.getenv('LINE_CHANNEL_TOKEN')
 USER_ID = os.getenv('LINE_USER_ID')
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
-TARGET_SENDER = 'ebill@ebppsmtp.taipower.com.tw'
-TARGET_SUBJECT_KEYWORD = '電費通知'
+# --- 可設定多個寄件人和關鍵字 ---
+TARGET_SENDERS = ['ebill@ebppsmtp.taipower.com.tw', 'gm10290014@gmail.com'] 
+#TARGET_SENDERS = ['ebill@ebppsmtp.taipower.com.tw', 'shinshingas@fecorp.biz'] 
+TARGET_SUBJECT_KEYWORDS = ['電費通知','電子繳費通知單']
 
 def send_line(msg):
     """發送 LINE Notify 訊息"""
@@ -41,8 +43,19 @@ def send_line(msg):
 def process_new_mail(client):
     """處理新郵件，如果找到並發送了通知，則返回 True"""
     logging.info("正在檢查新郵件...")
-    # 搜尋未讀且來自特定寄件人的郵件
-    messages = client.search(['UNSEEN', 'FROM', TARGET_SENDER])
+
+    # --- 組合 IMAP 搜尋條件 ---
+    search_criteria = ['UNSEEN']
+    if TARGET_SENDERS:
+        sender_criteria = []
+        for sender in TARGET_SENDERS:
+            sender_criteria.extend(['FROM', sender])
+        # 如果有多於一個寄件人，需要用 OR 包起來
+        if len(TARGET_SENDERS) > 1:
+            sender_criteria.insert(0, 'OR')
+        search_criteria.extend(sender_criteria)
+
+    messages = client.search(search_criteria)
     if not messages:
         logging.info("沒有找到符合條件的新郵件。")
         return False
@@ -51,27 +64,40 @@ def process_new_mail(client):
     logging.info(f"找到 {len(messages)} 封新郵件，正在處理...")
     for msgid in messages:
         try:
-            # 取得郵件內容
+            # 取得郵件內容、寄件人和 Gmail Message ID
             # X-GM-MSGID 是 Gmail 專有的 ID，為十進位數字
-            fetched_data = client.fetch(msgid, ['BODY[]', 'X-GM-MSGID'])
+            fetched_data = client.fetch(msgid, ['BODY[]', 'ENVELOPE', 'X-GM-MSGID'])
             raw_message = fetched_data[msgid][b'BODY[]']
             gmail_msg_id = fetched_data[msgid][b'X-GM-MSGID']
+            # 從 ENVELOPE 中取得寄件人資訊
+            from_address = fetched_data[msgid][b'ENVELOPE'].from_[0].mailbox.decode() + '@' + fetched_data[msgid][b'ENVELOPE'].from_[0].host.decode()
+
             msg = email.message_from_bytes(raw_message)
             
             # 解碼主旨
             subject, encoding = email.header.decode_header(msg['subject'])[0]
             if isinstance(subject, bytes):
                 subject = subject.decode(encoding or 'utf-8')
-
-            if TARGET_SUBJECT_KEYWORD in subject:
-                logging.info(f"找到電費通知郵件: {subject}")
-
+            
+            # 檢查主旨是否包含任何一個關鍵字
+            if any(keyword in subject for keyword in TARGET_SUBJECT_KEYWORDS):
                 # 將 Gmail 的十進位 ID 轉換為十六進位，並移除 '0x' 前綴
                 gmail_msg_id_hex = hex(gmail_msg_id)[2:]
                 # 組成 Gmail 網址
                 mail_url = f"https://mail.google.com/mail/u/0/#inbox/{gmail_msg_id_hex}"
                 
-                notification_message = f"收到電費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
+                notification_message = ""
+                # --- 根據寄件人和主旨關鍵字決定通知訊息 ---
+                if 'ebill@ebppsmtp.taipower.com.tw' in from_address and '電費通知' in subject:
+                    logging.info(f"找到電費通知郵件: {subject}")
+                    notification_message = f"收到電費繳費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
+                elif 'gm10290014@gmail.com' in from_address and '電子繳費通知單' in subject:
+                    logging.info(f"找到瓦斯繳費通知郵件: {subject}")
+                    notification_message = f"收到瓦斯繳費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
+                
+                # 如果有成功產生訊息，就發送通知
+                if not notification_message: continue
+
                 send_line(notification_message)
                 notification_sent = True
 
