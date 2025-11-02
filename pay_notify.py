@@ -19,8 +19,8 @@ USER_ID = os.getenv('LINE_USER_ID')
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
 # --- 可設定多個寄件人和關鍵字 ---
-TARGET_SENDERS = ['ebill@ebppsmtp.taipower.com.tw', 'gm10290014@gmail.com'] 
-#TARGET_SENDERS = ['ebill@ebppsmtp.taipower.com.tw', 'shinshingas@fecorp.biz'] 
+
+TARGET_SENDERS = ['ebill@ebppsmtp.taipower.com.tw', 'shinshingas@fecorp.biz'] 
 TARGET_SUBJECT_KEYWORDS = ['電費通知','電子繳費通知單']
 
 def send_line(msg):
@@ -90,10 +90,10 @@ def process_new_mail(client):
                 # --- 根據寄件人和主旨關鍵字決定通知訊息 ---
                 if 'ebill@ebppsmtp.taipower.com.tw' in from_address and '電費通知' in subject:
                     logging.info(f"找到電費通知郵件: {subject}")
-                    notification_message = f"收到電費繳費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
-                elif 'gm10290014@gmail.com' in from_address and '電子繳費通知單' in subject:
+                    notification_message = f"收到電費繳費通知:\n{subject}\n\n記得要繳費喔~\n\n點此查看信件:\n{mail_url}"
+                elif 'shinshingas@fecorp.biz' in from_address and '電子繳費通知單' in subject:
                     logging.info(f"找到瓦斯繳費通知郵件: {subject}")
-                    notification_message = f"收到瓦斯繳費通知:\n{subject}\n\n記得要繳費喔~\n點此查看信件:\n{mail_url}"
+                    notification_message = f"收到瓦斯繳費通知:\n{subject}\n\n記得要繳費喔~\n\n點此查看信件:\n{mail_url}"
                 
                 # 如果有成功產生訊息，就發送通知
                 if not notification_message: continue
