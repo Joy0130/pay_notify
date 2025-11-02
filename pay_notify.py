@@ -52,7 +52,10 @@ def process_new_mail(client):
     for msgid in messages:
         try:
             # 取得郵件內容
-            raw_message = client.fetch(msgid, ['BODY[]'])[msgid][b'BODY[]']
+            # X-GM-MSGID 是 Gmail 專有的 ID，為十進位數字
+            fetched_data = client.fetch(msgid, ['BODY[]', 'X-GM-MSGID'])
+            raw_message = fetched_data[msgid][b'BODY[]']
+            gmail_msg_id = fetched_data[msgid][b'X-GM-MSGID']
             msg = email.message_from_bytes(raw_message)
             
             # 解碼主旨
@@ -62,7 +65,14 @@ def process_new_mail(client):
 
             if TARGET_SUBJECT_KEYWORD in subject:
                 logging.info(f"找到電費通知郵件: {subject}")
-                send_line(f"收到電費通知: {subject}")
+
+                # 將 Gmail 的十進位 ID 轉換為十六進位，並移除 '0x' 前綴
+                gmail_msg_id_hex = hex(gmail_msg_id)[2:]
+                # 組成 Gmail 網址
+                mail_url = f"https://mail.google.com/mail/u/0/#inbox/{gmail_msg_id_hex}"
+                
+                notification_message = f"收到電費通知:\n{subject}\n\n點此查看信件:\n{mail_url}"
+                send_line(notification_message)
                 notification_sent = True
 
             # 將郵件標示為已讀
