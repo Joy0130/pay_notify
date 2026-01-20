@@ -46,15 +46,17 @@ def process_new_mail(client):
 
     # --- 組合 IMAP 搜尋條件 ---
     search_criteria = ['UNSEEN']
-    if TARGET_SENDERS:
-        sender_criteria = []
-        for sender in TARGET_SENDERS:
-            sender_criteria.extend(['FROM', sender])
-        # 如果有多於一個寄件人，需要用 OR 包起來
-        if len(TARGET_SENDERS) > 1:
-            sender_criteria.insert(0, 'OR')
-        search_criteria.extend(sender_criteria)
-
+    if TARGET_SENDERS and len(TARGET_SENDERS) > 1:
+        # 多個寄件人：使用 OR 邏輯
+        or_criteria = ['OR']
+        for i, sender in enumerate(TARGET_SENDERS[:-1]):
+            or_criteria. extend(['FROM', sender])
+        or_criteria.extend(['FROM', TARGET_SENDERS[-1]])
+        search_criteria.extend(or_criteria)
+    elif TARGET_SENDERS:
+        # 單個寄件人
+        search_criteria.extend(['FROM', TARGET_SENDERS[0]])
+    logging.info(f"搜尋條件: {search_criteria}")  # 除錯用
     messages = client.search(search_criteria)
     if not messages:
         logging.info("沒有找到符合條件的新郵件。")
